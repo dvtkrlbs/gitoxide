@@ -106,12 +106,42 @@ impl delegate::Revision for Delegate<'_> {
     fn reflog(&mut self, query: ReflogLookup) -> Option<()> {
         self.unset_disambiguate_call();
         match query {
-            ReflogLookup::Date(_date) => {
-                // TODO: actually do this - this should be possible now despite incomplete date parsing
-                self.err.push(Error::Planned {
-                    dependency: "remote handling and ref-specs are fleshed out more",
-                });
-                None
+            ReflogLookup::Date(date) => {
+                let r = match &mut self.refs[self.idx] {
+                    Some(r) => r.clone().attach(self.repo),
+                    val @ None => match self.repo.head().map(crate::Head::try_into_referent) {
+                        Ok(Some(r)) => {
+                            *val = Some(r.clone().detach());
+                            r
+                        }
+                        Ok(None) => {
+                            self.err.push(Error::UnbornHeadsHaveNoRefLog);
+                            return None;
+                        }
+                        Err(err) => {
+                            self.err.push(err.into());
+                            return None;
+                        }
+                    },
+                };
+
+                let mut platform = r.log_iter();
+                match platform.rev().ok().flatten() {
+                    Some(mut it) => {
+                        let closest_or_same = it.filter_map(Result::ok).min_by_key(|&l| l.signature.time.cmp(&date));
+                        self.objs[self.idx]
+                            .get_or_insert_with(HashSet::default)
+                            .insert(line.new_oid);
+                        Some(())
+                    }
+                    None => {
+                        self.err.push(Error::MissingRefLog {
+                            reference: r.name().as_bstr().into(),
+                            action: "lookup entry",
+                        });
+                        None
+                    }
+                }
             }
             ReflogLookup::Entry(no) => {
                 let r = match &mut self.refs[self.idx] {
