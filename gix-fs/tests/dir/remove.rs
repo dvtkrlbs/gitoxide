@@ -34,7 +34,10 @@ mod empty_upwards_until_boundary {
         let dir = tempfile::tempdir()?;
         let target = dir.path().join("actually-a-file");
         std::fs::write(&target, [42])?;
-        assert!(remove::empty_upward_until_boundary(&target, dir.path()).is_err()); // TODO: check for IsNotADirectory when it becomes stable
+
+        let res = remove::empty_upward_until_boundary(&target, dir.path());
+        assert!(res.is_err());
+        assert!(res.err().unwrap().kind() == io::ErrorKind::NotADirectory);
         assert!(target.is_file(), "it didn't touch the file");
         assert!(dir.path().is_dir(), "it won't touch the boundary");
         Ok(())

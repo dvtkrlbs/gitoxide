@@ -68,7 +68,7 @@ fn io_err_is_dir(err: &std::io::Error) -> bool {
     let raw = err.raw_os_error();
     raw == Some(if cfg!(windows) { 5 } else { 21 }) /* Not a directory */
         /* Also that, but under different circumstances */
-        || raw == Some(20)
+        || raw == Some(20) || err.kind() == std::io::ErrorKind::NotADirectory
 }
 
 /// Instantiation

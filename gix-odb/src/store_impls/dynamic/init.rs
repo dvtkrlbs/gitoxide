@@ -89,7 +89,7 @@ impl Store {
         )?;
         if !objects_dir.is_dir() {
             return Err(std::io::Error::new(
-                std::io::ErrorKind::Other, // TODO: use NotADirectory when stabilized
+                std::io::ErrorKind::NotADirectory,
                 format!("'{}' wasn't a directory", objects_dir.display()),
             ));
         }
